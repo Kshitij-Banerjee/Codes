@@ -1,0 +1,143 @@
+#include <vector>
+#include <assert.h>
+#include <algorithm>
+#include <cstring>
+#include <cstdlib>
+#include "limits.h"
+#include "assert.h"
+using namespace std;
+
+typedef vector< vector< pair<int, int> > > vvpi;
+typedef vector < pair<int,int> > vpi;
+typedef vpi::iterator vpit;
+typedef vvpi::iterator vvpit;
+
+typedef vector<int> vi;
+typedef vi::iterator vit;
+
+int highest_depth;
+
+struct comparator
+{
+	bool operator()( const pair< int, pair<int, int> >& l,   const pair< int, pair<int, int> >& r )
+	{
+		return l.first < r.first ;
+	}
+} comparer;
+
+
+bool is_ascending( int i , int weight, int memo_last[] )
+{
+	// current edge is greater than the max edge coming on this path.
+
+	return weight > memo_last[i];
+}
+
+int solution_brute( int N, vector<int> &A, vector<int> &B, vector<int> &C );
+
+int solution( int N, vector<int> &A, vector<int> &B, vector<int> &C )
+{
+	vvpi adjacency(N, vector<pair<int, int> >());
+
+	for (size_t i = 0; i < A.size(); i++)
+	{
+		adjacency[A[i]].push_back(make_pair(B[i], C[i]));
+		adjacency[B[i]].push_back(make_pair(A[i], C[i]));
+	}
+
+	vector< pair< int, pair<int,int> > > edges;
+	for( size_t i = 0 ; i < A.size(); i ++ )
+	{
+		edges.push_back( make_pair( C[i] , make_pair( A[i], B[i] ) ) );
+	}
+
+	// Sort on edge weights.
+	std::sort( edges.begin(), edges.end(), comparer );
+	   
+	int* memo = new int[N+1];
+	int* memo_last = new int[N+1];
+	memset( memo, 0, sizeof(int) * (N+1) );
+	memset( memo_last, 0, sizeof(int) * (N+1) );
+
+	for( size_t i = 0; i < edges.size(); i++ )
+	{
+		int start = edges[i].second.first;
+		int end = edges[i].second.second;
+
+		int old_start = memo[start];
+		int old_end = memo[end ];
+
+		if( (memo[start] == memo[end]) && (memo[start] == 0) ){
+			memo[start] = memo[end] = 1;
+			memo_last[start] = edges[i].first;
+			memo_last[end] = edges[i].first;
+			continue; 
+		}
+		
+		if( is_ascending( start, edges[i].first, memo_last ) ){
+			if( (old_start + 1) > memo[end] ) 
+			{
+				memo[end] = old_start + 1;
+				memo_last[ end ] = edges[i].first; // entered end from this edge.
+			}
+		}
+
+		if( is_ascending( end, edges[i].first, memo_last ) ){
+			if( (old_end + 1) > memo[ start ] ){
+				memo[start] = old_end + 1;
+				memo_last[ start ] = edges[i].first; // entered end from this edge.
+			}
+		}
+	}
+
+	int max = 0 ;
+	for( int i = 0 ; i < (N +1) ; i ++ )
+	{
+		max = std::max( max, memo[i] );
+	}
+
+	return max;
+}
+
+#include <iostream>
+void UT_1()
+{
+	int a[] = {1, 0, 2, 2, 2, 1, 1, 1};
+	int b[] = {1, 1, 1, 0, 1, 2, 0, 1};
+	int c[] = {8, 2, 5, 6, 3, 4, 2, 2};
+
+	vector<int> A( a, a+7);
+	vector<int> B( b, a+7);
+	vector<int> C( c, a+7);
+
+	assert( solution( 3, A, B, C ) == 5 );
+}
+void UT_2()
+{
+	vector<int> A, B, C;
+
+	int num_verts = 3;
+	int num_edges = 5;
+
+	do{
+		A.clear();
+		B.clear();
+		C.clear();
+
+		for (int i = 0; i < num_edges; i++)
+		{
+			A.push_back( rand() % num_verts );
+			B.push_back( rand() % num_verts );
+			C.push_back( rand() % num_verts );
+		}
+
+	}while( solution( num_verts, A, B, C ) == solution_brute( num_verts, A, B, C ) );
+
+	cout << num_verts;
+}
+
+void  main()
+{
+	UT_1();
+	UT_2();
+}
