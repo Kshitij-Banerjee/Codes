@@ -4,7 +4,6 @@
 #include <cstring>
 #include <cstdlib>
 #include "limits.h"
-#include "assert.h"
 using namespace std;
 
 typedef vector< vector< pair<int, int> > > vvpi;
@@ -14,6 +13,7 @@ typedef vvpi::iterator vvpit;
 
 typedef vector<int> vi;
 typedef vi::iterator vit;
+
 
 int highest_depth;
 
@@ -28,15 +28,17 @@ struct comparator
 
 bool is_ascending( int i , int weight, int memo_last[] )
 {
-	// current edge is greater than the max edge coming on this path.
+	// current edge is greater than the last edge for the max path
 
-	return weight > memo_last[i];
+	return (weight > memo_last[i]);
 }
 
 int solution_brute( int N, vector<int> &A, vector<int> &B, vector<int> &C );
-
 int solution( int N, vector<int> &A, vector<int> &B, vector<int> &C )
 {
+	if( A.size() == 0 )
+		return 0;
+
 	vvpi adjacency(N, vector<pair<int, int> >());
 
 	for (size_t i = 0; i < A.size(); i++)
@@ -56,8 +58,16 @@ int solution( int N, vector<int> &A, vector<int> &B, vector<int> &C )
 	   
 	int* memo = new int[N+1];
 	int* memo_last = new int[N+1];
-	memset( memo, 0, sizeof(int) * (N+1) );
-	memset( memo_last, 0, sizeof(int) * (N+1) );
+	fill( memo, memo + N + 1, 1 ); // every node has atleast one edge to be traversed from.
+	
+	for( size_t i = 0 ; i < adjacency.size() ; i ++ )
+	{
+		int min = INT_MAX;
+		for( size_t j = 0 ; j < adjacency[i].size() ; j ++ )
+			min = std::min( adjacency[i][j].second, min );		
+
+		memo_last[ i ] = min;
+	}
 
 	for( size_t i = 0; i < edges.size(); i++ )
 	{
@@ -67,14 +77,11 @@ int solution( int N, vector<int> &A, vector<int> &B, vector<int> &C )
 		int old_start = memo[start];
 		int old_end = memo[end ];
 
-		if( (memo[start] == memo[end]) && (memo[start] == 0) ){
-			memo[start] = memo[end] = 1;
-			memo_last[start] = edges[i].first;
-			memo_last[end] = edges[i].first;
-			continue; 
-		}
+		bool start_ascending =	is_ascending( start, edges[i].first, memo_last );
+		bool end_ascending =	is_ascending( end, edges[i].first, memo_last );
 		
-		if( is_ascending( start, edges[i].first, memo_last ) ){
+		if( start_ascending )
+		{
 			if( (old_start + 1) > memo[end] ) 
 			{
 				memo[end] = old_start + 1;
@@ -82,7 +89,8 @@ int solution( int N, vector<int> &A, vector<int> &B, vector<int> &C )
 			}
 		}
 
-		if( is_ascending( end, edges[i].first, memo_last ) ){
+		if( end_ascending )
+		{
 			if( (old_end + 1) > memo[ start ] ){
 				memo[start] = old_end + 1;
 				memo_last[ start ] = edges[i].first; // entered end from this edge.
@@ -96,48 +104,88 @@ int solution( int N, vector<int> &A, vector<int> &B, vector<int> &C )
 		max = std::max( max, memo[i] );
 	}
 
+	delete [] memo;
+	delete [] memo_last;
 	return max;
 }
 
-#include <iostream>
+#include < iostream >
 void UT_1()
 {
-	int a[] = {1, 0, 2, 2, 2, 1, 1, 1};
-	int b[] = {1, 1, 1, 0, 1, 2, 0, 1};
-	int c[] = {8, 2, 5, 6, 3, 4, 2, 2};
+	vector< int > A(8, 0 );
+	vector< int > B(8, 0 );
+	vector< int > C(8,0);
 
-	vector<int> A( a, a+7);
-	vector<int> B( b, a+7);
-	vector<int> C( c, a+7);
+	A[0] = 0;        
+	A[1] = 1;        
+	A[2] = 1;        
+	A[3] = 2;        
+	A[4] = 3;        
+	A[5] = 4;        
+	A[6] = 5;        
+	A[7] = 3;        
 
-	assert( solution( 3, A, B, C ) == 5 );
+	B[0] = 1 ;
+	B[1] = 2 ;
+	B[2] = 3 ;
+	B[3] = 3 ;
+	B[4] = 4 ;
+	B[5] = 5 ;
+	B[6] = 0 ;
+	B[7] = 2 ;
+			 
+	C[0] = 4;
+	C[1] = 3;
+	C[2] = 2;
+	C[3] = 5;
+	C[4] = 6;
+	C[5] = 6;
+	C[6] = 8;
+	C[7] = 7;
+ 
+	if(  solution(6, A, B, C) != 4 )
+		cout << "Failed 1" << endl ;
+	
 }
+
 void UT_2()
 {
-	vector<int> A, B, C;
+	int inA[] = { 2, 1, 3, 0, 1, 3, 0 };
+	int inB[] = { 1, 1, 4, 4, 0, 2, 1 };
+	int inC[] = { 4, 15, 10, 7, 2, 5, 16};
+	vector< int > A(inA, inA + 7 );
+	vector< int > B(inB, inB + 7 );
+	vector< int > C(inC, inC + 7 );
 
-	int num_verts = 3;
-	int num_edges = 5;
-
-	do{
-		A.clear();
-		B.clear();
-		C.clear();
-
-		for (int i = 0; i < num_edges; i++)
-		{
-			A.push_back( rand() % num_verts );
-			B.push_back( rand() % num_verts );
-			C.push_back( rand() % num_verts );
-		}
-
-	}while( solution( num_verts, A, B, C ) == solution_brute( num_verts, A, B, C ) );
-
-	cout << num_verts;
+	if( solution( 5, A, B, C ) != 4 )
+		cout << "Failed 2" << endl;
 }
 
-void  main()
+void UT_randomization()
+{
+	int nverts = 3;
+	int nedges = 5;
+	vector< int> A, B, C ;
+
+	do{
+
+		A.clear(); B.clear(); C.clear();
+
+		for( int i =0 ;i < nedges; i ++ )
+		{
+			A.push_back( rand() % nverts );
+			B.push_back( rand() % nverts );
+			C.push_back( rand() % nverts );
+		}
+	}
+	while( solution( nverts, A, B, C ) == solution_brute( nverts, A, B, C ) );
+	
+	cout << nverts;
+}
+
+int main()
 {
 	UT_1();
 	UT_2();
+	UT_randomization();
 }
