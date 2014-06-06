@@ -16,6 +16,7 @@ typedef vi::iterator vit;
 
 
 int highest_depth;
+const pair< int, int > invalid( -1, -1 );
 
 struct comparator
 {
@@ -25,12 +26,17 @@ struct comparator
 	}
 } comparer;
 
-
-bool is_ascending( int i , int weight, int memo_last[] )
+pair<int,int> find_longest_previous_path( int start, int weight, vector< vector< pair<int, int> > > &memo )
 {
-	// current edge is greater than the last edge for the max path
+	vector< pair<int, int> >& paths = memo[ start ];
+	
+	for( int i = (int)paths.size()-1 ; i >= 0 ; i-- )
+	{
+		if( paths[i].second < weight )
+			return paths[i];
+	}
 
-	return (weight > memo_last[i]);
+	return invalid;
 }
 
 int solution_brute( int N, vector<int> &A, vector<int> &B, vector<int> &C );
@@ -56,56 +62,55 @@ int solution( int N, vector<int> &A, vector<int> &B, vector<int> &C )
 	// Sort on edge weights.
 	std::sort( edges.begin(), edges.end(), comparer );
 	   
-	int* memo = new int[N+1];
-	int* memo_last = new int[N+1];
-	fill( memo, memo + N + 1, 1 ); // every node has atleast one edge to be traversed from.
+	vector< vector< pair<int, int> > > memo( N+1, vector< pair<int, int> > () );
 	
 	for( size_t i = 0 ; i < adjacency.size() ; i ++ )
 	{
-		int min = INT_MAX;
+		pair<int,int> min( 1, INT_MAX ); //path_length, edge_weight.
 		for( size_t j = 0 ; j < adjacency[i].size() ; j ++ )
-			min = std::min( adjacency[i][j].second, min );		
+		{
+			if( adjacency[i][j].second < min.second )
+				min.second = adjacency[i][j].second;
+		}
 
-		memo_last[ i ] = min;
+		memo[ i ].push_back( min );
 	}
 
 	for( size_t i = 0; i < edges.size(); i++ )
 	{
 		int start = edges[i].second.first;
 		int end = edges[i].second.second;
+		int weight = edges[i].first;	
 
-		int old_start = memo[start];
-		int old_end = memo[end ];
-
-		bool start_ascending =	is_ascending( start, edges[i].first, memo_last );
-		bool end_ascending =	is_ascending( end, edges[i].first, memo_last );
+		pair<int, int> start_path = find_longest_previous_path( start, weight, memo );
+		pair<int, int> end_path = find_longest_previous_path( end, weight, memo );
 		
-		if( start_ascending )
+		pair<int,int> old_end = (*(memo[end].end()-1));
+		pair<int,int> old_start = (*(memo[start].end()-1));
+
+		if( start_path != invalid )
 		{
-			if( (old_start + 1) > memo[end] ) 
+			if( (start_path.first + 1) >  old_end.first ) 
 			{
-				memo[end] = old_start + 1;
-				memo_last[ end ] = edges[i].first; // entered end from this edge.
+				memo[end].push_back( make_pair( (start_path.first + 1), weight ) );
 			}
 		}
 
-		if( end_ascending )
+		if( end_path != invalid )
 		{
-			if( (old_end + 1) > memo[ start ] ){
-				memo[start] = old_end + 1;
-				memo_last[ start ] = edges[i].first; // entered end from this edge.
+			if( (end_path.first + 1) >  old_start.first ) 
+			{
+				memo[start].push_back( make_pair( (end_path.first + 1), weight ) );
 			}
 		}
 	}
 
 	int max = 0 ;
-	for( int i = 0 ; i < (N +1) ; i ++ )
+	for( size_t i = 0 ; i < adjacency.size() ; i ++ )
 	{
-		max = std::max( max, memo[i] );
+		max = std::max( max, (*(memo[i].end()-1)).first );
 	}
 
-	delete [] memo;
-	delete [] memo_last;
 	return max;
 }
 
